@@ -1,4 +1,9 @@
-const node_fetch = require('node-fetch')
+import fetch from 'cross-fetch';
+import readline from "readline"
+const rl = readline.createInterface({
+    input: process.stdin,
+    output: process.stdout
+});
 
 class Client {
     auth: string;
@@ -8,67 +13,71 @@ class Client {
     }
 
     //Returns a list of Mods on that date
-    public getMods(date) {
-        return node_fetch.fetch(
+    public async getMods(date: EnrichedDate) {
+        return fetch(
             "https://student.enrichingstudents.com/v1.0/appointment/viewschedules",
             {
               headers: {
                 accept: "application/json, text/plain, */*",
-                "accept-language": "en-US,en;q=0.9",
                 "content-type": "application/json;charset=UTF-8",
                 esauthtoken:
-                  this.auth,
-                "sec-ch-ua":
-                  '"Opera GX";v="89", "Chromium";v="103", "_Not:A-Brand";v="24"',
-                "sec-ch-ua-mobile": "?0",
-                "sec-ch-ua-platform": '"Windows"',
-                "sec-fetch-dest": "empty",
-                "sec-fetch-mode": "cors",
-                "sec-fetch-site": "same-origin",
-                cookie:
-                  "__utmc=64607867; __utma=64607867.313069578.1660582665.1660582665.1660847704.2; __utmz=64607867.1660847704.2.2.utmcsr=student.enrichingstudents.com|utmccn=(referral)|utmcmd=referral|utmcct=/",
-                Referer: "https://student.enrichingstudents.com/dashboard",
-                "Referrer-Policy": "strict-origin-when-cross-origin",
+                  this.auth
               },
               body: '{"startDate":"' + date.toString() + '"}',
               method: "POST",
             }
-        ).then(async (response) => {
+        ).then(async (response: any) => {
+            return response.json()
+        });
+    }
+    //Returns schedulable mods for a date and modslot
+    public getScheduleList(date: EnrichedDate, slot: ModSlot) {
+        return fetch(
+            "https://student.enrichingstudents.com/v1.0/course/forstudentscheduling",
+            {
+              headers: {
+                accept: "application/json, text/plain, */*",
+                "content-type": "application/json;charset=UTF-8",
+                esauthtoken:
+                  this.auth
+              },
+              body: "{\"periodId\":"+ slot.id +",\"startDate\":\""+ date.toString() +"\"}",
+              method: "POST",
+            }
+        ).then(async (response: any) => {
             return response.json()
         });
     }
 
-    public setMod(id, date: EnrichedDate, slot: ModSlot) {
-
-    }
-    //Returns schedulable mods for a date and modslot
-    public getScheduleList(date: EnrichedDate, slot: ModSlot) {
-        node_fetch.fetch("https://student.enrichingstudents.com/v1.0/course/forstudentscheduling", {
-            "headers": {
-                "accept": "application/json, text/plain, */*",
-                "accept-language": "en-US,en;q=0.9",
+    public scheduleMod(mod: Mod) {  
+        return fetch(
+            "https://student.enrichingstudents.com/v1.0/appointment/save",
+            {
+              headers: {
+                accept: "application/json, text/plain, */*",
                 "content-type": "application/json;charset=UTF-8",
-                "esauthtoken": "jcnwodh2:4;wueiosdzm:326;ksdfjlsnv:1271303;qdjHDnmxadf:s49-Z1KF2ggTbFUTS8lD944xUXn8C2yGj5IrLQ__;ofu82uicn:s49-Z1KF2ghvgF3HiYf7DlafardIYECakHw,Vg__;kosljsdnc:s49-Z1KF2ghnJtPCLKe-Hnz-oQwH7iwCrQJAyw__;^ydh)9xLkxx:s49-Z1KF2ggToXh1yz6ekpFihfZ7RsenCdWiRg__",
-                "sec-ch-ua": "\"Opera GX\";v=\"89\", \"Chromium\";v=\"103\", \"_Not:A-Brand\";v=\"24\"",
-                "sec-ch-ua-mobile": "?0",
-                "sec-ch-ua-platform": "\"Windows\"",
-                "sec-fetch-dest": "empty",
-                "sec-fetch-mode": "cors",
-                "sec-fetch-site": "same-origin",
-                "cookie": "_ga=GA1.2.2102854953.1660857336; _fbp=fb.1.1660857336127.1348881197; __utmc=64607867; __utmz=64607867.1660857338.1.1.utmcsr=(direct)|utmccn=(direct)|utmcmd=(none); _gid=GA1.2.608790227.1661057802; __utma=64607867.2102854953.1660857336.1660970940.1661057809.3; __utmb=64607867.1.10.1661057809",
-                "Referer": "https://student.enrichingstudents.com/schedule",
-                "Referrer-Policy": "strict-origin-when-cross-origin"
-            },
-            "body": "{\"periodId\":11,\"startDate\":\"2022-08-29\"}",
-            "method": "POST"
+                esauthtoken:
+                  this.auth
+              },
+              body: "{\"courseId\":" + mod.course.id + ",\"periodId\":"+mod.course.period_id?.id+",\"scheduleDate\":\"" + mod.date.toString() + "\"}",
+              method: "POST",
+            }
+        ).then(async (response: any) => {
+            return response.json()
         });
     }
 }
 
 class Mod {
-    course: Course;
-    date: EnrichedDate;
-    id: number;
+    public course: Course;
+    public seats: number;
+    public date: EnrichedDate;
+
+    constructor(course: Course, seats: number, date: EnrichedDate) {
+        this.course = course;
+        this.seats = seats;
+        this.date = date;
+    }
 }
 
 class ModSlot {
@@ -106,18 +115,35 @@ class ModSlot {
         }
         return null;
     }
+    
 }
 
 class Course {
+    constructor() {
+        this.room = "";
+        this.description = "";
+        this.name = "";
+        this.facilitator_name = "";
+        this.period_id = null;
+        this.id = -1;
+
+    }
+
     room: string;
     description: string;
     name: string;
-    facilitator_name: string;
+    facilitator_name: string | null;
     period_id: ModSlot | null;
     id: number;
 
     public toString() {
-        return this.name + " " + this.description + " in " + this.room + " at " + this.period_id?.name + " by " + this.facilitator_name;
+        if(this.facilitator_name != "") {
+            return this.name + " in " + this.room + " for " + this.period_id?.name + " by " + this.facilitator_name;
+        }
+        if(this.room != "None") {
+            return this.name + " in " + this.room + " for " + this.period_id?.name;
+        }
+        return this.name + " for " + this.period_id?.name;
     }
 }
 
@@ -126,44 +152,98 @@ class EnrichedDate {
     toString() {
         return this.date.getFullYear() + "-" + (this.date.getUTCMonth() + 1) + "-" + this.date.getUTCDate()
     }
+    static days = ["monday", "tuesday", "wednesday", "thursday", "friday"];
 
     constructor(date: Date) {
         this.date = date
     }
+
+    public static of(string: string) {
+        let date = new Date();
+        date.setFullYear(Number.parseInt(string.split("-")[0]))
+        date.setMonth(Number.parseInt(string.split("-")[1]) - 1)
+        date.setDate(Number.parseInt(string.split("-")[2]))
+        return new EnrichedDate(date)
+    }
+
+    public static getDate(dotw: string) {
+        let date = new EnrichedDate(new Date());
+        if(EnrichedDate.days.includes(dotw.toLowerCase())) {
+            while(date.date.getDay() != EnrichedDate.days.indexOf(dotw.toLowerCase()) + 1) {
+                date.date.setDate(date.date.getDate() + 1)
+            }
+        }
+        return date;
+    }
 }
 
-function toCourseList(json) {
-    let courseList = []
 
+
+function toCourseList(json: any) {
+    let courseList: Array<any> = []
+    for(let i = 0; i < json[0].details.length; i++) {
+        let cc = json[0].details[i];
+        let course = new Course();
+        course.name = cc.courseName;
+        if(course.name == "Open Schedule" || course.name.includes("Blocked for:")) {
+            continue;
+        }
+        course.description = cc.courseDescription
+        if(cc.instructorFirstName != undefined) {
+            course.facilitator_name = cc.instructorFirstName + " " + cc.instructorLastName
+        }
+        course.period_id = ModSlot.getMod(cc.periodId);
+        course.room = cc.courseRoom;
+        course.id = cc.courseId;
+        courseList.push(course);
+    }
+    return courseList;
+}
+function toScheduleableList(json: any, mod: ModSlot) {
+    let courseList: Array<Mod> = []
     for(let i = 0; i < json.courses.length; i++) {
         let cc = json.courses[i];
+        if(!cc.isOpenForScheduling || cc.maxNumberStudents <= 0 || cc.courseName == "This course does not allow for student self-scheduling") {
+            continue;
+        }
         let course = new Course();
-        course.description = cc.courseDescription
-        course.facilitator_name = cc.staffFirstName + " " + cc.staffLastName
         course.name = cc.courseName;
-        course.period_id = ModSlot.getMod(cc.periodId);
-        course.room = cc.room;
         course.id = cc.courseId;
+        course.description = cc.courseDescription
+        if(cc.instructorFirstName != undefined) {
+            course.facilitator_name = cc.instructorFirstName + " " + cc.instructorLastName
+        }
+        course.period_id = mod;
+        course.room = cc.courseRoom;
+        courseList.push(new Mod(course, cc.maxNumberStudents, EnrichedDate.of(cc.scheduleDate.split('T')[0])));
     }
+    return courseList;
 }
 
+let client = new Client("jjcnwodh2:4;wueiosdzm:326;ksdfjlsnv:1271303;qdjHDnmxadf:X2i4,H-G2gidmBpNdveyLaWxsfYfayd4MTKv3w__;ofu82uicn:X2i4,H-G2ggWmiZ6xOYyTMUFELBkkzvdW0s5ZQ__;kosljsdnc:X2i4,H-G2gjjxyze,kNCxuRf0vBtXYozbynQUw__;^ydh)9xLkxx:X2i4,H-G2gilsNjH4E9y7hbTT7rNQLVkNxJyQw__");
 
+let cs: Array<Mod>;
 
+function query() {
+    rl.question("Which mod: ", (mod: string) => {
+        console.log("Waiting on the ES Server")
+        let slot: any = ModSlot.getMod(Number.parseInt(mod));
+        if(slot instanceof ModSlot) {
+            client.getScheduleList(EnrichedDate.getDate("monday"), slot).then((json: any) => {
+                console.log("Parsing results...")
+                cs = toScheduleableList(json, slot)
+                for(let i = 0; i < cs.length; i++) {
+                    console.log(i + ">" + cs[i].course.toString())
+                }
+                rl.question("Which class: ", (res: string) => {
+                    client.scheduleMod(cs[Number.parseInt(res)]).then((json: any) => {
+                        console.log(json);
+                        query();
+                    })
+                })
+            })
+        }
+    })
+}
 
-
-
-
-
-
-
-let client = new Client("jcnwodh2:4;wueiosdzm:326;ksdfjlsnv:1271303;qdjHDnmxadf:PUqwOmmD2gje4iKvqkOaCM2y7XyIZcL,Fb8T9A__;ofu82uicn:PUqwOmmD2ghONGhvUvYDJ2TFUgCOwCRt1dY8Ow__;kosljsdnc:PUqwOmmD2gjSelDO2AmtYnkRE7ZHcpO-INFhlA__;^ydh)9xLkxx:PUqwOmmD2gg79GPg,Y5vsTQbFl5N9Sn4gZ1zJg__");
-
-let cs: any;
-
-console.log("Waiting on the ES Server")
-client.getMods(new EnrichedDate(new Date())).then(json => {
-    cs = toCourseList(json)
-    for(let i = 0; i < cs.length; i++) {
-        console.log(cs[i].toString())
-    }
-})
+query();
