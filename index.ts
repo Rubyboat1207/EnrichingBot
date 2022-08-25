@@ -1,11 +1,6 @@
 import fetch from 'cross-fetch';
-import readline from "readline"
-const rl = readline.createInterface({
-    input: process.stdin,
-    output: process.stdout
-});
 
-class Client {
+export class Client {
     auth: string;
 
     public constructor(auth: string) {
@@ -68,7 +63,7 @@ class Client {
     }
 }
 
-class Mod {
+export class Mod {
     public course: Course;
     public seats: number;
     public date: EnrichedDate;
@@ -80,7 +75,7 @@ class Mod {
     }
 }
 
-class ModSlot {
+export class ModSlot {
     static slotList: Array<ModSlot> = []
 
     public id: number;
@@ -118,7 +113,7 @@ class ModSlot {
     
 }
 
-class Course {
+export class Course {
     constructor() {
         this.room = "";
         this.description = "";
@@ -147,7 +142,7 @@ class Course {
     }
 }
 
-class EnrichedDate {
+export class EnrichedDate {
     public date: Date;
     toString() {
         return this.date.getFullYear() + "-" + (this.date.getUTCMonth() + 1) + "-" + this.date.getUTCDate()
@@ -176,10 +171,7 @@ class EnrichedDate {
         return date;
     }
 }
-
-
-
-function toCourseList(json: any) {
+export function toCourseList(json: any) {
     let courseList: Array<any> = []
     for(let i = 0; i < json[0].details.length; i++) {
         let cc = json[0].details[i];
@@ -199,7 +191,7 @@ function toCourseList(json: any) {
     }
     return courseList;
 }
-function toScheduleableList(json: any, mod: ModSlot) {
+export function toScheduleableList(json: any, mod: ModSlot) {
     let courseList: Array<Mod> = []
     for(let i = 0; i < json.courses.length; i++) {
         let cc = json.courses[i];
@@ -219,31 +211,3 @@ function toScheduleableList(json: any, mod: ModSlot) {
     }
     return courseList;
 }
-
-let client = new Client("jjcnwodh2:4;wueiosdzm:326;ksdfjlsnv:1271303;qdjHDnmxadf:X2i4,H-G2gidmBpNdveyLaWxsfYfayd4MTKv3w__;ofu82uicn:X2i4,H-G2ggWmiZ6xOYyTMUFELBkkzvdW0s5ZQ__;kosljsdnc:X2i4,H-G2gjjxyze,kNCxuRf0vBtXYozbynQUw__;^ydh)9xLkxx:X2i4,H-G2gilsNjH4E9y7hbTT7rNQLVkNxJyQw__");
-
-let cs: Array<Mod>;
-
-function query() {
-    rl.question("Which mod: ", (mod: string) => {
-        console.log("Waiting on the ES Server")
-        let slot: any = ModSlot.getMod(Number.parseInt(mod));
-        if(slot instanceof ModSlot) {
-            client.getScheduleList(EnrichedDate.getDate("monday"), slot).then((json: any) => {
-                console.log("Parsing results...")
-                cs = toScheduleableList(json, slot)
-                for(let i = 0; i < cs.length; i++) {
-                    console.log(i + ">" + cs[i].course.toString())
-                }
-                rl.question("Which class: ", (res: string) => {
-                    client.scheduleMod(cs[Number.parseInt(res)]).then((json: any) => {
-                        console.log(json);
-                        query();
-                    })
-                })
-            })
-        }
-    })
-}
-
-query();
