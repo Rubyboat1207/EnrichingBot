@@ -5,8 +5,10 @@ const rl = readline.createInterface({
     input: process.stdin,
     output: process.stdout
 });
-
-const client = new es.Client("jcnwodh2:4;wueiosdzm:326;ksdfjlsnv:1271303;qdjHDnmxadf:eTeoVseI2gj17cd8m1qAvpCyfIpMjSHCGW,gxg__;ofu82uicn:eTeoVseI2ghzZa4Lqe9hsQ1pErtL32B6qlBJuA__;kosljsdnc:eTeoVseI2giNaeRVqc-Rkf8r2Id8ONZg1Q836A__;^ydh)9xLkxx:eTeoVseI2gjRc2UlGBhSxTmCv4KLulU9uNYKzQ__")
+//To get your authtoken type:
+//localStorage.ESAuthToken
+//in the console in enriching students
+const client = new es.Client("YOUR ENRICHING STUDENTS AUTH TOKEN HERE")
 function init() {
     rl.question("Get Courses or Schedule Courses?\n0 > Get Courses\n1 > Schedule Flex Mods\n\n", (get_sche: string) => {
         if(get_sche.includes("1")) {
