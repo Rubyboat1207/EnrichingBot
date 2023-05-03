@@ -1,4 +1,4 @@
-import fetch from 'cross-fetch';
+import { tuplecmp } from "./math.ts";
 
 export class Client {
     auth: string;
@@ -8,7 +8,7 @@ export class Client {
     }
 
     //Returns a list of Mods on that date
-    public async getMods(date: EnrichedDate) {
+    private async getModsInternal(date: EnrichedDate) {
         return fetch(
             "https://student.enrichingstudents.com/v1.0/appointment/viewschedules",
             {
@@ -21,12 +21,18 @@ export class Client {
               body: '{"startDate":"' + date.toString() + '"}',
               method: "POST",
             }
-        ).then(async (response: any) => {
+        ).then((response: any) => {
             return response.json()
         });
     }
+
+    //Returns a list of Mods on that date
+    public async getMods(date: EnrichedDate): Promise<Course[]> {
+        return toCourseList(await this.getModsInternal(date))
+    }
+    
     //Returns schedulable mods for a date and modslot
-    public getScheduleList(date: EnrichedDate, slot: ModSlot) {
+    private getScheduleListInternal(date: EnrichedDate, slot: ModSlot) {
         return fetch(
             "https://student.enrichingstudents.com/v1.0/course/forstudentscheduling",
             {
@@ -39,9 +45,13 @@ export class Client {
               body: "{\"periodId\":"+ slot.id +",\"startDate\":\""+ date.toString() +"\"}",
               method: "POST",
             }
-        ).then(async (response: any) => {
+        ).then((response: any) => {
             return response.json()
         });
+    }
+
+    public async getScheduleList(date: EnrichedDate, slot: ModSlot):  Promise<Mod[]> {
+        return toScheduleableList(await this.getScheduleListInternal(date, slot), slot);
     }
 
     public scheduleMod(mod: Mod) {  
@@ -57,7 +67,7 @@ export class Client {
               body: "{\"courseId\":" + mod.course.id + ",\"periodId\":"+mod.course.period_id?.id+",\"scheduleDate\":\"" + mod.date.toString() + "\"}",
               method: "POST",
             }
-        ).then(async (response: any) => {
+        ).then((response: any) => {
             return response.json()
         });
     }
@@ -73,6 +83,10 @@ export class Mod {
         this.seats = seats;
         this.date = date;
     }
+
+    async schedule(client: Client) {
+        await client.scheduleMod(this);
+    }
 }
 
 export class ModSlot {
@@ -80,27 +94,32 @@ export class ModSlot {
 
     public id: number;
     public name: string;
+    public time: [number, number] = [-1, -1];
     constructor(id:number, name:string) {
         this.id = id;
         this.name = name;
         ModSlot.slotList.push(this)
     }
-    static MOD1 = new ModSlot(1, "Mod 1");
-    static MOD2 = new ModSlot(2, "Mod 2");
-    static MOD3 = new ModSlot(3, "Mod 3");
-    static MOD4 = new ModSlot(4, "Mod 4");
-    static MOD5 = new ModSlot(5, "Mod 5");
-    static MOD6 = new ModSlot(6, "Mod 6");
-    static MOD7 = new ModSlot(7, "Mod 7");
-    static MOD8 = new ModSlot(8, "Mod 8");
-    static TITAN_TIME = new ModSlot(9, "Titan Time");
-    static FLEX_MOD1 = new ModSlot(10, "Flex Mod 1")
-    static FLEX_MOD2 = new ModSlot(11, "Flex Mod 2")
-    static FLEX_MOD3 = new ModSlot(12, "Flex Mod 3")
-    static FLEX_MOD4 = new ModSlot(13, "Flex Mod 4")
-    static FLEX_MOD5 = new ModSlot(14, "Flex Mod 5")
-    static LUNCH_1 = new ModSlot(15, "Lunch 12:30-1:00")
-    static LUNCH_2 = new ModSlot(16, "Lunch 1:00-1:13")
+    static MORNING1 = ModSlot.withTime(1, "9:20 - 10:00", [9, 30]);
+    static MORNING2 = ModSlot.withTime(2, "10:00 - 10:30", [10, 0]);
+    static MORNING3 = ModSlot.withTime(3, "10:30 - 11:00", [10, 30]);
+    static MORNING4 = ModSlot.withTime(4, "11:00 - 11:30", [11, 0]);
+    static MORNING5 = ModSlot.withTime(5, "11:30 - 12:00", [11, 30]);
+    static MORNING6 = ModSlot.withTime(6, "12:00 - 12:30", [12, 0]);
+    static AFTERNOON1 = ModSlot.withTime(7, "1:30 - 2:00", [12 + 1, 30]);
+    static AFTERNOON2 = ModSlot.withTime(8, "2:00 - 2:30", [12 + 2, 0]);
+    static AFTERNOON3 = ModSlot.withTime(9, "2:30 - 3:00", [12 + 2, 30]);
+    static AFTERNOON4 = ModSlot.withTime(10, "3:00 - 3:30", [12 + 3, 0]);
+    static AFTERNOON5 = ModSlot.withTime(11, "3:30 - 4:00", [12 + 3, 30]);
+    static AFTERNOON6 = ModSlot.withTime(12, "4:00 - 4:30", [12 + 4, 0]);
+    static TITAN_TIME = new ModSlot(13, "Titan Time");
+    static FLEX_MOD1 = new ModSlot(14, "Flex Mod 1")
+    static FLEX_MOD2 = new ModSlot(15, "Flex Mod 2")
+    static FLEX_MOD3 = new ModSlot(16, "Flex Mod 3")
+    static FLEX_MOD4 = new ModSlot(17, "Flex Mod 4")
+    static FLEX_MOD5 = new ModSlot(18, "Flex Mod 5")
+    static LUNCH_1 = new ModSlot(19, "Lunch 12:30-1:00")
+    static LUNCH_2 = new ModSlot(20, "Lunch 1:00-1:13")
 
     static getMod(id: number) {
         for(let i = 0; i < ModSlot.slotList.length; i++) {
@@ -110,7 +129,57 @@ export class ModSlot {
         }
         return null;
     }
+
+    static withTime(id: number, name: string, time: [number, number]): ModSlot {  
+
+        const slot = new ModSlot(id, name);
+
+        slot.time = time;
+
+        return slot;
+    }
     
+    static promptMods() {
+        console.log("Available Mods:");
+        for(let i = 0; i < ModSlot.slotList.length; i++) {
+            console.log(`[${ModSlot.slotList[i].id}] ${ModSlot.slotList[i].name}`);
+        }
+        const input: string | null = prompt("Enter Mod Slot ID: ");
+        if(input == null) {
+            return null;
+        }
+
+        const id: number = Number.parseInt(input);
+        if(id < 1 || id > ModSlot.slotList.length) {
+            return null;
+        }
+        return ModSlot.getMod(id);
+    }
+
+    static getCurrentSlot() {
+        const now = new Date();
+
+        const timezoneOffset = -6 * 60; //UTC-6
+
+        let mins = now.getUTCHours() + (timezoneOffset);
+        let hrs = now.getUTCMinutes() + (timezoneOffset % 60);
+
+        //floor to 30 mins
+
+        if(mins >= 30) {
+            mins = 30;
+        }else {
+            mins = 0;
+        }
+
+        for(const slot of ModSlot.slotList) {
+            if(tuplecmp(slot.time, [hrs, mins])) {
+                return slot;
+            }
+        }
+
+        return null;
+    }
 }
 
 export class Course {
@@ -121,7 +190,6 @@ export class Course {
         this.facilitator_name = "";
         this.period_id = null;
         this.id = -1;
-
     }
 
     room: string;
@@ -171,11 +239,14 @@ export class EnrichedDate {
         return date;
     }
 }
-export function toCourseList(json: any) {
-    let courseList: Array<any> = []
+// deno-lint-ignore no-explicit-any
+export function toCourseList(json: any): Array<Course> {
+    const courseList: Array<Course> = []
     for(let i = 0; i < json[0].details.length; i++) {
-        let cc = json[0].details[i];
-        let course = new Course();
+        const cc = json[0].details[i];
+        const course = new Course();
+
+
         course.name = cc.courseName;
         if(course.name == "Open Schedule" || course.name.includes("Blocked for:")) {
             continue;
@@ -202,8 +273,11 @@ export function toScheduleableList(json: any, mod: ModSlot) {
         course.name = cc.courseName;
         course.id = cc.courseId;
         course.description = cc.courseDescription
-        if(cc.instructorFirstName != undefined) {
+        if(cc.instructorFirstName) {
             course.facilitator_name = cc.instructorFirstName + " " + cc.instructorLastName
+        }else {
+            const split = cc.courseName.split("-") as string[];
+            course.facilitator_name = split[0].replaceAll('_', ' ');
         }
         course.period_id = mod;
         course.room = cc.courseRoom;
