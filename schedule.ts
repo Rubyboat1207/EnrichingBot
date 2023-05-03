@@ -3,7 +3,9 @@ import { tuplecmp } from "./math.ts";
 
 const student = new Client("jcnwodh2:4;wueiosdzm:326;ksdfjlsnv:1271303;qdjHDnmxadf:PHh0dFlN2wjYLmfKS-bsaoPFKhsalGoey8uNLA__;ofu82uicn:PHh0dFlN2wg18W283zEw7f7j7QWYmDqCaSG-Hw__;kosljsdnc:PHh0dFlN2wgbw8c56JX57T,VuHLg0qwr661Cpg__;^ydh)9xLkxx:PHh0dFlN2wgesfuHGGf0T1PIU8dt8dls,VoJiw__")
 
-const mods = await student.getMods(new EnrichedDate(new Date()));
+let today = new EnrichedDate(new Date());
+
+let mods = await student.getMods(today);
 
 class UserPrompt {
     promptText: string;
@@ -30,6 +32,9 @@ const prompts = [
         stopped = true;
         return "Stopped";
     }),
+    new UserPrompt("Date", () => {
+        return today.toString();
+    }),
     new UserPrompt("Check Classes", () => {
         const courses = mods;
 
@@ -46,12 +51,10 @@ const prompts = [
         if(mod) {
             return mod.name;
         }
-        const timezoneOffset = -6 * 60; //UTC-6
-
         const now = new Date();
 
-        let mins = now.getUTCHours() + (timezoneOffset / 60);
-        let hrs = now.getUTCMinutes() + (timezoneOffset % 60);
+        let mins = now.getHours();
+        let hrs = now.getMinutes();
 
         console.log(hrs)
 
@@ -92,7 +95,7 @@ const prompts = [
 
         if(!isNaN(parseInt(selection))) {
             const mod = mods[parseInt(selection)];
-            await mod.schedule(student);
+            console.log(await mod.schedule(student));
             return `Scheduled ${mod.course.toString()}`;
         }
 
@@ -119,13 +122,21 @@ const prompts = [
             return '';
         }
 
+        const loweredSel = selection.toLowerCase();
+
         const isNumber = !isNaN(parseInt(selection));
 
         const mod = mods.find(mod => {
             if(isNumber) {
                 return mods.indexOf(mod) == parseInt(selection);
             }else {
-                return mod.course.facilitator_name == selection;
+                if(mod.course.facilitator_name?.toLowerCase() == loweredSel) {
+                    return true;
+                }else if(mod.course.facilitator_name?.includes(' ') && mod.course.facilitator_name?.split(' ')[1].toLowerCase() == loweredSel) {
+                    return true;
+                }else {
+                    return false;
+                }
             }
         });
         
@@ -137,6 +148,11 @@ const prompts = [
 
         return `Scheduled ${mod.course.toString()}`;
     }),
+    new UserPrompt("Refresh", async () => {
+        mods = await student.getMods(today);
+
+        return "refreshed";
+    })
 ];
 
 while(!stopped) {

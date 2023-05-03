@@ -55,6 +55,16 @@ export class Client {
     }
 
     public scheduleMod(mod: Mod) {  
+        console.log(`Scheduling Mod ${mod.course.name} on ${mod.date.toString()} using id: ${mod.course.period_id?.id} (${mod.course.period_id?.name})`)
+        
+        const body = {
+            courseId: mod.course.id,
+            periodId: mod.course.period_id?.id,
+            scheduleDate: mod.date.toString()
+        }
+
+        // console.log(eightmothsagorudyisabitch)
+        
         return fetch(
             "https://student.enrichingstudents.com/v1.0/appointment/save",
             {
@@ -64,7 +74,7 @@ export class Client {
                 esauthtoken:
                   this.auth
               },
-              body: "{\"courseId\":" + mod.course.id + ",\"periodId\":"+mod.course.period_id?.id+",\"scheduleDate\":\"" + mod.date.toString() + "\"}",
+              body: JSON.stringify(body),
               method: "POST",
             }
         ).then((response: any) => {
@@ -85,7 +95,7 @@ export class Mod {
     }
 
     async schedule(client: Client) {
-        await client.scheduleMod(this);
+        return await client.scheduleMod(this);
     }
 }
 
@@ -159,10 +169,8 @@ export class ModSlot {
     static getCurrentSlot() {
         const now = new Date();
 
-        const timezoneOffset = -6 * 60; //UTC-6
-
-        let mins = now.getUTCHours() + (timezoneOffset);
-        let hrs = now.getUTCMinutes() + (timezoneOffset % 60);
+        let mins = now.getHours();
+        let hrs = now.getMinutes();
 
         //floor to 30 mins
 
@@ -225,7 +233,7 @@ export class EnrichedDate {
         let date = new Date();
         date.setFullYear(Number.parseInt(string.split("-")[0]))
         date.setMonth(Number.parseInt(string.split("-")[1]) - 1)
-        date.setDate(Number.parseInt(string.split("-")[2]))
+        date.setDate(Number.parseInt(string.split("-")[2]) - 1)
         return new EnrichedDate(date)
     }
 
