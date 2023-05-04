@@ -1,1 +1,1 @@
-deno compile --allow-net schedule.ts --output es.exe
+deno compile --allow-net --allow-run schedule.ts

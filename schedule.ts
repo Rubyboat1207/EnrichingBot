@@ -1,22 +1,57 @@
 import { Client, EnrichedDate, ModSlot } from "./index.ts";
-import { tuplecmp } from "./math.ts";
 import { parse } from "https://deno.land/std@0.184.0/flags/mod.ts";
+import { TokenServer } from "./tokenServer.ts";
+import { open } from "https://deno.land/x/open@v0.0.6/index.ts";
+import {  writeText } from "https://deno.land/x/copy_paste@v1.1.3/mod.ts";
 
 const flags = parse(Deno.args, {
-    string: ['-token', 't']
+    string: ['-token', 't'],
 })
 
-if(!(flags["-token"] || flags.t)) {
-    console.log("you must provide a token using --token, or -t")
+const useTokenServer = Deno.args.includes('-ts');
+
+if(!(flags["-token"] || flags.t || useTokenServer)) {
+    console.log("you must provide a token using --token, or -t, or use the token server (-ts)")
 
     Deno.exit();
 }
 
-const token: string = flags["-token"] != null ? flags["-token"] : flags.t as string;
+let student: Client;
 
-let student = new Client(token)
+if(flags['-token']) {
+    student = new Client(flags['-token']);
+}else if(flags.t) {
+    student = new Client(flags.t);
+}else if(useTokenServer) {
+    console.log('Opening enriching students...')
 
-let today = new EnrichedDate(new Date());
+
+    
+    await open('https://enrichingstudents.com/');
+
+    console.log('When you are loggen in, open the developer tools, and paste the command in your clipboard into the developer console.')
+    console.log('This command will send your login token to the local server running in this app.')
+    console.log('It will stay on your computer, and will not be uploaded elsewhere')
+    
+    writeText(`fetch('http://localhost:3002/token/' + localStorage.getItem('ESAuthToken'))`);
+
+    const tokenServer = new TokenServer(3002);
+
+    const token = await tokenServer.awaitConnections();
+
+    if(!token) {
+        console.log('No token was received. Exiting...')
+        Deno.exit();
+    }
+
+    console.log('You may now close your browser...')
+
+    student = new Client(token);
+}else {
+    Deno.exit();
+}
+
+const today = new EnrichedDate(new Date());
 
 let mods = await student.getMods(today);
 
