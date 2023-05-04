@@ -1,8 +1,9 @@
-import { Client, EnrichedDate, ModSlot } from "./index.ts";
+import { Client, EnrichedDate, Mod, ModSlot } from "./index.ts";
 import { parse } from "https://deno.land/std@0.184.0/flags/mod.ts";
 import { TokenServer } from "./tokenServer.ts";
 import { open } from "https://deno.land/x/open@v0.0.6/index.ts";
 import {  writeText } from "https://deno.land/x/copy_paste@v1.1.3/mod.ts";
+import { printoutSelection } from "./utils.ts";
 
 const flags = parse(Deno.args, {
     string: ['-token', 't'],
@@ -163,35 +164,11 @@ const prompts = [
 
         const mods = await student.getScheduleList(new EnrichedDate(new Date()), slot);
 
-        let i = 0;
-        for(const mod of mods) {
-            console.log(`${i})` + mod.course.facilitator_name);
-            i++;
-        }
+        printoutSelection<string>(mods.map(i => i.course.facilitator_name))
 
-        const selection = prompt("Which Teacher?");
+        const selection = prompt("Which Teacher?") as string;
 
-        if(selection == null) {
-            return '';
-        }
-
-        const loweredSel = selection.toLowerCase();
-
-        const isNumber = !isNaN(parseInt(selection));
-
-        const mod = mods.find(mod => {
-            if(isNumber) {
-                return mods.indexOf(mod) == parseInt(selection);
-            }else {
-                if(mod.course.facilitator_name?.toLowerCase() == loweredSel) {
-                    return true;
-                }else if(mod.course.facilitator_name?.includes(' ') && mod.course.facilitator_name?.split(' ')[1].toLowerCase() == loweredSel) {
-                    return true;
-                }else {
-                    return false;
-                }
-            }
-        });
+        const mod = Mod.getByUserInput(mods, selection);
         
         if(mod == null) {
             return '';
@@ -203,6 +180,11 @@ const prompts = [
             return res.errorMessages.join('\n');
         }
         return `Scheduled ${mod.course.toString()}`;
+    }),
+    new UserPrompt("Refresh", async () => {
+        mods = await student.getMods(today);
+
+        return "refreshed";
     }),
     new UserPrompt("Refresh", async () => {
         mods = await student.getMods(today);

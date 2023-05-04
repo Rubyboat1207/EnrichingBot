@@ -1,4 +1,4 @@
-import { tuplecmp } from "./math.ts";
+import { tuplecmp } from "./utils.ts";
 
 export class Client {
     auth: string;
@@ -102,6 +102,25 @@ export class Mod {
     async schedule(client: Client) {
         return await client.scheduleMod(this);
     }
+
+    static getByUserInput(courses: Mod[], input: string) {
+        const isNumber = !isNaN(parseInt(input));
+        const lower = input.toLowerCase();
+
+        return courses.find(mod => {
+            if(isNumber) {
+                return courses.indexOf(mod) == parseInt(input);
+            }else {
+                if(mod.course.facilitator_name?.toLowerCase() == lower) {
+                    return true;
+                }else if(mod.course.facilitator_name?.includes(' ') && mod.course.facilitator_name?.split(' ')[1].toLowerCase() == lower) {
+                    return true;
+                }else {
+                    return false;
+                }
+            }
+        });
+    }
 }
 
 export class ModSlot {
@@ -115,18 +134,21 @@ export class ModSlot {
         this.name = name;
         ModSlot.slotList.push(this)
     }
+
     static MORNING1 = ModSlot.withTime(1, "9:20 - 10:00", [9, 30]);
     static MORNING2 = ModSlot.withTime(2, "10:00 - 10:30", [10, 0]);
     static MORNING3 = ModSlot.withTime(3, "10:30 - 11:00", [10, 30]);
     static MORNING4 = ModSlot.withTime(4, "11:00 - 11:30", [11, 0]);
     static MORNING5 = ModSlot.withTime(5, "11:30 - 12:00", [11, 30]);
     static MORNING6 = ModSlot.withTime(6, "12:00 - 12:30", [12, 0]);
+
     static AFTERNOON1 = ModSlot.withTime(7, "1:30 - 2:00", [12 + 1, 30]);
     static AFTERNOON2 = ModSlot.withTime(8, "2:00 - 2:30", [12 + 2, 0]);
     static AFTERNOON3 = ModSlot.withTime(9, "2:30 - 3:00", [12 + 2, 30]);
     static AFTERNOON4 = ModSlot.withTime(10, "3:00 - 3:30", [12 + 3, 0]);
     static AFTERNOON5 = ModSlot.withTime(11, "3:30 - 4:00", [12 + 3, 30]);
     static AFTERNOON6 = ModSlot.withTime(12, "4:00 - 4:30", [12 + 4, 0]);
+
     static TITAN_TIME = new ModSlot(13, "Titan Time");
     static FLEX_MOD1 = new ModSlot(14, "Flex Mod 1")
     static FLEX_MOD2 = new ModSlot(15, "Flex Mod 2")
