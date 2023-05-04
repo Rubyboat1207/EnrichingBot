@@ -54,7 +54,7 @@ export class Client {
         return toScheduleableList(await this.getScheduleListInternal(date, slot), slot);
     }
 
-    public scheduleMod(mod: Mod) {  
+    public scheduleMod(mod: Mod): Promise<ScheduleResponse> {  
         console.log(`Scheduling Mod ${mod.course.name} on ${mod.date.toString()} using id: ${mod.course.period_id?.id} (${mod.course.period_id?.name})`)
         
         const body = {
@@ -79,8 +79,13 @@ export class Client {
             }
         ).then((response: any) => {
             return response.json()
-        });
+        }) as Promise<ScheduleResponse>;
     }
+}
+
+export interface ScheduleResponse {
+    appointmentEditorResponse: number;
+    errorMessages: string[];
 }
 
 export class Mod {

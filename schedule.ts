@@ -1,11 +1,26 @@
 import { Client, EnrichedDate, ModSlot } from "./index.ts";
 import { tuplecmp } from "./math.ts";
+import { parse } from "https://deno.land/std@0.184.0/flags/mod.ts";
 
-const student = new Client("jcnwodh2:4;wueiosdzm:326;ksdfjlsnv:1271303;qdjHDnmxadf:PHh0dFlN2wjYLmfKS-bsaoPFKhsalGoey8uNLA__;ofu82uicn:PHh0dFlN2wg18W283zEw7f7j7QWYmDqCaSG-Hw__;kosljsdnc:PHh0dFlN2wgbw8c56JX57T,VuHLg0qwr661Cpg__;^ydh)9xLkxx:PHh0dFlN2wgesfuHGGf0T1PIU8dt8dls,VoJiw__")
+const flags = parse(Deno.args, {
+    string: ['-token', 't']
+})
+
+if(!(flags["-token"] || flags.t)) {
+    console.log("you must provide a token using --token, or -t")
+
+    Deno.exit();
+}
+
+const token: string = flags["-token"] != null ? flags["-token"] : flags.t as string;
+
+let student = new Client(token)
 
 let today = new EnrichedDate(new Date());
 
 let mods = await student.getMods(today);
+
+
 
 class UserPrompt {
     promptText: string;
@@ -22,7 +37,6 @@ class UserPrompt {
     }
     
 }
-
 
 
 let stopped = false;
@@ -54,7 +68,7 @@ const prompts = [
         const now = new Date();
 
         let mins = now.getHours();
-        let hrs = now.getMinutes();
+        let hrs = now.getHours();
 
         console.log(hrs)
 
@@ -95,7 +109,11 @@ const prompts = [
 
         if(!isNaN(parseInt(selection))) {
             const mod = mods[parseInt(selection)];
-            console.log(await mod.schedule(student));
+            const res = await mod.schedule(student);
+
+            if(res.errorMessages.length > 1) {
+                return res.errorMessages.join('\n');
+            }
             return `Scheduled ${mod.course.toString()}`;
         }
 
@@ -144,8 +162,11 @@ const prompts = [
             return '';
         }
 
-        student.scheduleMod(mod);
+        const res = await mod.schedule(student);
 
+        if(res.errorMessages.length >= 1) {
+            return res.errorMessages.join('\n');
+        }
         return `Scheduled ${mod.course.toString()}`;
     }),
     new UserPrompt("Refresh", async () => {
